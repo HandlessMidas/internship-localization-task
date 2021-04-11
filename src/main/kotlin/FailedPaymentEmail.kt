@@ -7,29 +7,20 @@ class FailedPaymentEmail(
 ) {
 
     // TODO: accept the user's language and build a localized version of the email
-    fun buildContent(body: HTML) = with(body) {
+    fun buildContent(body: HTML, language: LanguageMessagesInterface) = with(body) {
         body {
             p {
-                +"Thank you for staying with JetBrains."
+                +language.thanksMessage()
             }
+            val failedPaymentGeneralMessage = language.failedPaymentGeneralMessage(data)
             p {
-                +"Unfortunately, we were not able to charge ${data.cardDetails ?: "your card"} for your "
+                +failedPaymentGeneralMessage[0]
                 if (data.customerType == CustomerType.PERSONAL) {
-                    +"${data.subscriptionPack.billingPeriod.name.toLowerCase()} subscription to ${
-                        data.items.joinToString(
-                            ", "
-                        ) { it.productName }
-                    }."
+                    +failedPaymentGeneralMessage[1]
                 } else {
-                    +"subscription".simplyPluralize(data.items.sumBy { it.quantity })
-                    +" as part of Subscription Pack ${
-                        data.subscriptionPack.subPackRef?.let { "#$it" }.orEmpty()
-                    } for the next "
-                    +(when (data.subscriptionPack.billingPeriod) {
-                        BillingPeriod.MONTHLY -> "month"
-                        BillingPeriod.ANNUAL -> "year"
-                        else -> "period"
-                    } + ": ")
+                    +failedPaymentGeneralMessage[2]
+                    +failedPaymentGeneralMessage[3]
+                    +failedPaymentGeneralMessage[4]
                     br()
                     data.items.forEach {
                         +"- ${it.quantity} x ${it.description}";br()
@@ -38,53 +29,41 @@ class FailedPaymentEmail(
             }
 
             if (data.cardProvider == CardProvider.PAY_PAL)
-                paypalFailedPaymentReasons()
+                paypalFailedPaymentReasons(language.paypalFailedPaymentReasons())
             else
-                creditCardFailedPaymentReasons()
-
+                creditCardFailedPaymentReasons(language.creditCardFailedPaymentReasons())
+            val accessMessage = language.accessMessage(data)
             p {
-                +("To ensure uninterrupted access to your ${data.subscriptionPack.pluralize()}, " +
-                        "please follow the link and renew your ${data.subscriptionPack.pluralize()} ")
+                +accessMessage[0]
                 a(href = "https://foo.bar/ex") {
-                    +"manually"
+                    +accessMessage[1]
                 }
-                +" till ${DateTimeFormatter.ofPattern("MMM dd, YYYY", Locale.US).format(data.paymentDeadline)}"
+                +accessMessage[2]
             }
             p {
-                +"You can double-check and try your existing payment card again, use another card, or choose a different payment method."
+                +language.retryMessage()
             }
         }
     }
 }
 
-private fun FlowContent.creditCardFailedPaymentReasons() {
+private fun FlowContent.creditCardFailedPaymentReasons(reasons: MutableList<String>) {
     p {
-        +"Common reasons for failed credit card payments include:"; br()
-        +"- The card is expired, or the expiration date was entered incorrectly;"; br()
-        +"- Insufficient funds or payment limit on the card; or"; br()
-        +"- The card is not set up for international/overseas transactions, or the issuing bank has rejected the transaction."; br()
+        +reasons[0]; br()
+        +reasons[1]; br()
+        +reasons[2]; br()
+        +reasons[3]; br()
     }
 }
 
-private fun FlowContent.paypalFailedPaymentReasons() {
+private fun FlowContent.paypalFailedPaymentReasons(reasons: MutableList<String>) {
     p {
-        +("Please make sure that your PayPal account is not closed or deleted. " +
-                "The credit card connected to your PayPal account should be active. " +
-                "Common reasons for failed card payments include:"); br()
-        +"- The card is not confirmed in your PayPal account;"; br()
-        +"- The card details (Number, Expiration date, CVC, Billing address) are incomplete or were entered incorrectly;"; br()
-        +"- The card is expired; or"; br()
-        +"- Insufficient funds or payment limit on the card."
+        +reasons[0]; br()
+        +reasons[1]; br()
+        +reasons[2]; br()
+        +reasons[3]; br()
+        +reasons[4]
     }
 }
 
-private fun SubscriptionPack.pluralize(title: String = "subscription"): String {
-    return title.simplyPluralize(this.totalLicenses)
-}
 
-private fun String.simplyPluralize(amount: Int): String {
-    return when (amount) {
-        1 -> this
-        else -> "${this}s"
-    }
-}

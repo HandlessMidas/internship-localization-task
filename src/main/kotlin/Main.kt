@@ -12,8 +12,7 @@ fun main() {
 
     // You can provide any data as the parameter of FailedPaymentEmail to ensure the email was localized correctly
     val email = FailedPaymentEmail(provideFakedDataPersonal())
-
-    println(StringBuilder().appendHTML().html { email.buildContent(this) })
+    println(StringBuilder().appendHTML().html { email.buildContent(this, EnglishLanguageMessages()) })
 }
 
 private fun provideFakedDataPersonal() = FailedPaymentData(
